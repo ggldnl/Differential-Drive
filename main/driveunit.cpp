@@ -1,7 +1,7 @@
 #include "driveunit.hpp"
 
-DriveUnit::DriveUnit(Motor& motor, Encoder& encoder, float ticksPerRevolution)
-  : _motor(motor), _encoder(encoder), _ticksPerRev(ticksPerRevolution), _maxRPM(motor.getMaxSpeedRPM()){
+DriveUnit::DriveUnit(Motor& motor, Encoder& encoder, float ticksPerRevolution, float maxRPM)
+  : _motor(motor), _encoder(encoder), _ticksPerRev(ticksPerRevolution), _maxRPM(maxRPM){
 
 }
 
@@ -11,6 +11,14 @@ void DriveUnit::enable() {
 
 void DriveUnit::disable() {
   _motor.disable();
+}
+
+void DriveUnit::enablePID() {
+  _pidenabled = true;
+}
+
+void DriveUnit::disablePID() {
+  _pidenabled = false;
 }
 
 void DriveUnit::setTargetRPM(float rpm) {
@@ -63,24 +71,25 @@ void DriveUnit::update() {
   // _output = measuredRPM;
 
   // Apply exponential smoothing (low-pass filter)
-  float alpha = 0.2f;
+  float alpha = 0.1f;
   _output = alpha * rawRPM + (1.0f - alpha) * _output;
 
-  /*
-  // Smoothing RPM estimation due to encoder too coars and dt too small
-  float alpha = 0.2f;
-  measuredRPM = alpha * measuredRPM + (1.0f - alpha) * measuredRPM;
-  */
+  if (_pidenabled) {
+    
+    // PID control
+    float error = _target - _output;
+    _integral += error * dt;
+    float derivative = (error - _lastError) / dt;
+    _lastError = error;
 
-  // PID control
-  float error = _target - _output;
-  _integral += error * dt;
-  float derivative = (error - _lastError) / dt;
-  _lastError = error;
+    // Maybe we can add a feedforward term
+    float control = _Kp * error + _Ki * _integral + _Kd * derivative;
+    float normalized = control / _maxRPM;
 
-  float control = _Kp * error + _Ki * _integral + _Kd * derivative;
-
-  _motor.drive(control);
+    _motor.drive(normalized);
+  } else {
+    _motor.drive(_target / _maxRPM);
+  }
 }
 
 

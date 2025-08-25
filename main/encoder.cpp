@@ -5,9 +5,15 @@ Encoder::Encoder(uint8_t pin): pin(pin), ticks(0) {
 }
 
 void Encoder::update() {
+  /*
+   * Update the encoder ticks. This function should be called inside an interrupt service routine (ISR).
+   * It increments the ticks count when the encoder pin state changes.
+   */
+
+  // No debounce:
   // ticks ++;
 
-  // Update with debounce
+  // Debounce:
   unsigned long now = micros();
   if (now - lastTickMicros > _debounceMicros) {
     ticks++;

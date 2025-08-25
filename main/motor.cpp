@@ -1,10 +1,14 @@
 #include "motor.hpp"
 
-Motor::Motor(uint8_t in1Pin, uint8_t in2Pin, uint8_t enablePin, float maxSpeedRPM)
-  : _in1(in1Pin), _in2(in2Pin), _en(enablePin), _maxSpeedRPM(maxSpeedRPM) {
-  /*
-  in1 and in2 should be PWM capable.
-  */
+
+Motor::Motor(uint8_t in1Pin, uint8_t in2Pin, uint8_t enablePin)
+  : _in1(in1Pin), _in2(in2Pin), _en(enablePin) {
+  /* 
+   * Creates a motor. The input pins (in1 and in2) should be PWM capable.
+   * This class abstracts the H-bridge for a single motor. We assume that
+   * to assume that the enable pin is shared between all motors
+   * on the board, so enabling/disabling it willl affect all of them.
+   */
   pinMode(_in1, OUTPUT);
   pinMode(_in2, OUTPUT);
   pinMode(_en, OUTPUT);
@@ -17,14 +21,6 @@ Motor::Motor(uint8_t in1Pin, uint8_t in2Pin, uint8_t enablePin, float maxSpeedRP
   // analogWriteRange(_maxPWM);
 }
 
-float Motor::getMaxSpeedRPM() {
-  return _maxSpeedRPM;
-}
-
-void Motor::setMaxSpeedRPM(float maxSpeedRPM) {
-  _maxSpeedRPM = maxSpeedRPM;
-}
-
 void Motor::enable() {
   digitalWrite(_en, HIGH);
 }
@@ -33,22 +29,32 @@ void Motor::disable() {
   digitalWrite(_en, LOW);
 }
 
+void Motor::flip() {
+  /*
+   * Flip the motors default direction.
+   */
+  _flip *= -1;
+}
+
 void Motor::drive(float speed) {
+  /*
+   * Drive the motor at a given speed (range [-1, 1]):
+   * -  1 -> full speed forward
+   * - -1 -> full speed backward
+   * -  0 -> stopped
+   */
 
-  // Clamp input to [-_maxSpeedRPM, maxSpeedRPM]
-  if (speed > _maxSpeedRPM) speed = _maxSpeedRPM;
-  if (speed < -_maxSpeedRPM) speed = -_maxSpeedRPM;
-
-  // Normalize to [-1, 1]
-  float normalized = speed / _maxSpeedRPM;
+  // Clamp input to [-1, 1]
+  if (speed > 1) speed = 1;
+  if (speed < -1) speed = -1;
 
   // Scale to PWM range
-  int pwm = int(fabs(normalized) * _maxPWM);
+  int pwm = int(fabs(speed) * _maxPWM);
   
-  if (speed > 0) {
+  if (speed * _flip > 0) {
     analogWrite(_in1, pwm);
     digitalWrite(_in2, LOW);
-  } else if (speed < 0) {
+  } else if (speed * _flip < 0) {
     analogWrite(_in2, pwm);
     digitalWrite(_in1, LOW);
   } else {

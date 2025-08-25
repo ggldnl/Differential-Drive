@@ -4,14 +4,17 @@
 #include "motor.hpp"
 #include "encoder.hpp"
 
+
 class DriveUnit {
 
   public:
 
-    DriveUnit(Motor& motor, Encoder& encoder, float ticksPerRevolution);
+    DriveUnit(Motor& motor, Encoder& encoder, float ticksPerRevolution, float maxRPM);
 
     void enable();
     void disable();
+    void enablePID();
+    void disablePID();
 
     void setTargetRPM(float rpm);
     void setTargetAngularVelocity(float w);
@@ -41,6 +44,7 @@ class DriveUnit {
     unsigned long _lastTime;
 
     // PID controller
+    bool _pidenabled = true;
     float _Kp = 2.0;
     float _Ki = 0.05;
     float _Kd = 0.0;
